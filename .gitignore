@@ -1,0 +1,44 @@
+# ---------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------
+node_modules/
+admin-react/node_modules/
+
+# ---------------------------------------------------------------
+# Build output
+# ---------------------------------------------------------------
+admin-react/dist/
+dist/
+build/
+
+# ---------------------------------------------------------------
+# Secrets — never commit these
+# ---------------------------------------------------------------
+.env
+.env.*
+!.env.example
+.dbg/
+
+# ---------------------------------------------------------------
+# Bundled Windows Python runtime for the NFC kiosk.
+# The Raspberry Pi runs its own python3, so this is machine-local
+# and would add ~160 MB of binaries to the repository.
+# ---------------------------------------------------------------
+public/nfc/**/_python/
+__pycache__/
+*.pyc
+
+# ---------------------------------------------------------------
+# Unrelated iOS/watchOS project that happens to share this folder.
+# It has nothing to do with the PWD web platform, so it stays local.
+# ---------------------------------------------------------------
+VibeRail/
+
+# ---------------------------------------------------------------
+# Local tooling / editor state
+# ---------------------------------------------------------------
+.vercel/
+.trae/
+*.log
+Thumbs.db
+.DS_Store

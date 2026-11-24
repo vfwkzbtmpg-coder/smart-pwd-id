@@ -1,0 +1,137 @@
+/* ---------- Digital ID card ----------
+   Ported 1:1 from the approved card design used on the legacy admin pages
+   (public/applications.html): same markup, same class names, same
+   clamp()-driven sizing, same button set. Everything is scoped to
+   #idCardPreview so the design's generic class names (.card, .face, .field,
+   .value, .photo, .auth …) cannot leak into the console's styles.
+   Lengths the design expressed in vw use cqw instead, so the card keeps
+   identical proportions inside the page column. */
+#idCardPreview { container-type: inline-size; max-width: 900px; margin: 12px auto 0; font-family: Arial, Helvetica, sans-serif; color: #111; font-size: 12px; }
+#idCardPreview, #idCardPreview * { box-sizing: border-box; }
+#idCardPreview .stage { display: grid; place-items: center; perspective: 1400px; width: 100%; }
+#idCardPreview .card-intro { width: 100%; transform-style: preserve-3d; animation: id-card-rise 1.8s cubic-bezier(.22,.8,.2,1) both; }
+#idCardPreview .card-float { width: 100%; transform-style: preserve-3d; animation: id-card-idle 15s cubic-bezier(.45,0,.55,1) 1.8s infinite; will-change: transform; }
+#idCardPreview .stage.dragging .card-float { animation-play-state: paused; }
+@keyframes id-card-rise {
+  0% { opacity: 0; transform: translate3d(0,36px,-80px) rotateX(12deg) rotateY(-8deg) scale(.97); }
+  72% { opacity: 1; transform: translate3d(0,-3px,0) rotateX(-1deg) rotateY(1deg) scale(1.005); }
+  100% { opacity: 1; transform: translate3d(0,0,0) rotateX(0) rotateY(0) scale(1); }
+}
+@keyframes id-card-idle {
+  0%, 100% { transform: translateY(0) rotateX(0deg) rotateY(-1.5deg); }
+  50% { transform: translateY(-3px) rotateX(1deg) rotateY(1.5deg); }
+}
+#idCardPreview .card { width: min(100%, 900px); aspect-ratio: 1.586; position: relative; transform-style: preserve-3d; transition: transform .85s cubic-bezier(.2,.75,.25,1); cursor: grab; touch-action: none; will-change: transform; }
+#idCardPreview .card:active { cursor: grabbing; }
+#idCardPreview .card:focus-visible { outline: 3px solid #ff8c42; outline-offset: 6px; border-radius: 18px; }
+#idCardPreview .face { position: absolute; inset: 0; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: #fff; border: 1px solid #ccc; border-radius: clamp(10px,2cqw,22px); box-shadow: 0 14px 35px #0002; }
+#idCardPreview .front { display: block; padding: clamp(8px,1.5cqw,16px); background: #fff center/100% 100% no-repeat; }
+#idCardPreview .front::before { content: ""; position: absolute; inset: 0; background: rgba(255,255,255,.18); pointer-events: none; }
+#idCardPreview .front > * { position: relative; z-index: 1; }
+#idCardPreview .back { background: #fff center/100% 100% no-repeat; transform: rotateY(180deg); padding: clamp(12px,2.5cqw,28px); display: grid; grid-template-rows: auto 1fr auto; gap: clamp(8px,1.5cqw,16px); }
+#idCardPreview .back::before { content: ""; position: absolute; inset: 0; background: rgba(255,255,255,.18); pointer-events: none; }
+#idCardPreview .back > * { position: relative; z-index: 1; }
+#idCardPreview .content { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(95px,29%) minmax(0,1fr); gap: clamp(10px,2.3cqw,25px); align-items: center; padding: clamp(8px,2%,18px) 0 0; background: transparent; }
+#idCardPreview .left { display: grid; grid-template-rows: 1fr auto; gap: clamp(8px,1.5cqw,15px); height: 100%; min-height: 0; align-items: center; }
+#idCardPreview .photo { width: 92%; height: auto; flex: none; justify-self: center; aspect-ratio: .82; max-height: 90%; align-self: center; border: 2px solid #222; border-radius: clamp(8px,1.5cqw,15px); overflow: hidden; display: grid; place-items: center; background: #f5f5f5; color: #777; font-size: clamp(10px,1.5cqw,14px); text-align: center; }
+#idCardPreview .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#idCardPreview .signature { text-align: center; font-size: clamp(8px,1.25cqw,12px); font-weight: 800; letter-spacing: .08em; }
+#idCardPreview .sigline { height: clamp(20px,3cqw,35px); border-bottom: 1.5px solid #111; margin-bottom: 4px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+#idCardPreview .sigline span { font-size: clamp(7px,1cqw,10px); color: #888; font-weight: 500; letter-spacing: 0; }
+#idCardPreview .sigline img { max-width: 100%; max-height: 100%; object-fit: contain; }
+#idCardPreview .fields { display: grid; gap: clamp(10px,2cqw,22px); min-width: 0; }
+#idCardPreview .field { display: grid; grid-template-columns: minmax(105px,42%) minmax(0,1fr); align-items: end; gap: clamp(5px,1cqw,12px); min-width: 0; }
+#idCardPreview .field label { font-size: clamp(8px,1.55cqw,15px); font-weight: 800; line-height: 1.15; }
+#idCardPreview .value { min-width: 0; border-bottom: 1.5px solid #222; padding: 0 2px 4px; text-align: center; font-weight: 800; font-size: clamp(10px,1.9cqw,19px); line-height: 1.15; overflow-wrap: anywhere; }
+#idCardPreview .value.small { font-size: clamp(9px,1.55cqw,16px); }
+#idCardPreview .notice { text-align: center; font-weight: 900; color: #9d1b1b; font-size: clamp(8px,1.2cqw,13px); line-height: 1.4; letter-spacing: .02em; background: #fff; padding: clamp(4px,1cqw,8px) clamp(6px,1.5cqw,14px); border-radius: 6px; }
+/* The middle band of the back face holds the emergency block plus the printed
+   verification QR, which carries the same link the NFC tag is written with. */
+#idCardPreview .backmid { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: clamp(8px,1.6cqw,18px); align-items: center; min-height: 0; }
+#idCardPreview .backqr { display: grid; justify-items: center; gap: clamp(3px,.7cqw,7px); }
+#idCardPreview .backqr-code { width: clamp(46px,13cqw,116px); aspect-ratio: 1; padding: 4px; background: #fff; border: 1.5px solid #333; border-radius: 8px; }
+#idCardPreview .backqr-code svg { width: 100%; height: 100%; display: block; }
+#idCardPreview .backqr-empty { display: grid; place-items: center; color: #aaa; font-weight: 800; font-size: clamp(8px,1.4cqw,12px); }
+#idCardPreview .backqr-cap { font-size: clamp(6px,1cqw,10px); font-weight: 800; letter-spacing: .04em; color: #333; }
+#idCardPreview .backbox { border: 1.5px solid #333; border-radius: 12px; padding: clamp(10px,2cqw,22px); display: grid; grid-template-rows: auto 1fr auto; gap: 12px; }
+#idCardPreview .backtitle { text-align: center; font-weight: 900; font-size: clamp(11px,2cqw,20px); }
+#idCardPreview .backfields { display: grid; align-content: center; gap: clamp(7px,1.4cqw,14px); font-size: clamp(9px,1.5cqw,15px); }
+#idCardPreview .backfield { display: grid; grid-template-columns: max-content 1fr; gap: 8px; }
+#idCardPreview .blank { border-bottom: 1px solid #555; min-width: 0; }
+#idCardPreview .auth { text-align: center; font-weight: 800; font-size: clamp(8px,1.3cqw,13px); min-height: 0; display: block; padding: 0; background: none; }
+#idCardPreview .foot { font-size: clamp(7px,1.1cqw,11px); color: #666; text-align: center; }
+#idCardPreview .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 18px 0 10px; }
+#idCardPreview button { border: 1px solid #222; background: #111; color: #fff; padding: 10px 15px; border-radius: 999px; font-size: 14px; font-weight: 700; cursor: pointer; }
+#idCardPreview button.secondary { background: #fff; color: #111; }
+#idCardPreview input[type=file] { display: none; }
+/* 16 selectable front backgrounds, one per Metro Manila LGU */
+#idCardPreview .bggrid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; padding: 12px; margin: 0 0 10px; border: 1px solid #e2e2e2; border-radius: 14px; background: #fafafa; }
+#idCardPreview .bgswatch { padding: 0; border: 2px solid transparent; border-radius: 10px; background: #fff; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+#idCardPreview .bgswatch img, #idCardPreview .bgmissing { width: 100%; aspect-ratio: 1.6; object-fit: cover; display: block; background: #f0f0f0; }
+#idCardPreview .bgmissing { display: grid; place-items: center; color: #aaa; font-size: 9px; font-weight: 700; }
+#idCardPreview .bgswatch b { font-size: 10px; font-weight: 700; color: #333; padding: 4px 3px; text-align: center; line-height: 1.2; }
+#idCardPreview .bgswatch:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,.14); }
+#idCardPreview .bgswatch.active { border-color: #ff8c42; box-shadow: 0 0 0 3px rgba(255,140,66,.25); }
+#idCardPreview .bgswatch[data-empty="1"] { cursor: default; opacity: .5; }
+#idCardPreview .bgswatch[data-empty="1"]:hover { transform: none; box-shadow: none; }
+#idCardPreview .bgsavenote { margin: -2px 0 12px; font-size: 12px; font-weight: 700; text-align: center; color: #08784a; }
+#idCardPreview .bgsavenote.error { color: #b42318; }
+/* NFC reader control — arms the USB reader so the next tapped card is bound to
+   this holder. Only rendered for an approved application. */
+#idCardPreview .nfc-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin: 0 0 12px; }
+#idCardPreview .nfc-note { font-size: 12px; font-weight: 700; text-align: center; color: #08784a; }
+#idCardPreview .nfc-note.busy { color: #b45309; }
+#idCardPreview .nfc-note.error { color: #b42318; }
+#idCardPreview .nfc-note.busy::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: #ff8c42; animation: nfcScanPulse 1.2s ease-in-out infinite; }
+#idCardPreview .nfc-row button[disabled] { opacity: .6; cursor: progress; }
+@keyframes nfcScanPulse { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.2); } }
+/* QR + NFC link panel — the QR the card prints, at a size that scans off the
+   screen, next to the raw link an admin writes to an NFC sticker. */
+#idCardPreview .qrpanel { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 16px; align-items: start; padding: 14px; margin: 0 0 14px; border: 1px solid #e2e2e2; border-radius: 14px; background: #fafafa; text-align: left; }
+#idCardPreview .qrpanel-code { display: grid; place-items: center; padding: 8px; background: #fff; border: 1px solid #ddd; border-radius: 12px; }
+#idCardPreview .qrpanel-svg { width: 132px; height: 132px; }
+#idCardPreview .qrpanel-svg svg { width: 100%; height: 100%; display: block; }
+#idCardPreview .qrpanel-empty { display: grid; place-items: center; width: 132px; height: 132px; color: #999; font-size: 11px; font-weight: 700; text-align: center; padding: 8px; }
+#idCardPreview .qrpanel-copy { display: grid; gap: 7px; min-width: 0; }
+#idCardPreview .qrpanel-copy strong { font-size: 15px; color: #1e3a5f; }
+#idCardPreview .qrpanel-copy small { font-size: 12px; line-height: 1.5; color: #555; }
+#idCardPreview .qrpanel-copy label { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #666; margin-top: 3px; }
+#idCardPreview .qrpanel-row { display: flex; flex-wrap: wrap; gap: 8px; }
+#idCardPreview .qrpanel input[type=text] { flex: 1 1 220px; min-width: 0; padding: 9px 11px; border: 1px solid #bbb; border-radius: 9px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: #111; background: #fff; }
+#idCardPreview .qrpanel input[type=text]:focus { outline: 2px solid #ff8c42; outline-offset: 1px; border-color: #ff8c42; }
+#idCardPreview .qrpanel-row button { padding: 9px 14px; font-size: 12px; }
+#idCardPreview .qrpanel-row button[disabled] { opacity: .5; cursor: not-allowed; }
+#idCardPreview .qrpanel-warn { color: #b45309; font-weight: 700; }
+#idCardPreview .qrpanel-note.error { color: #b42318; font-weight: 700; }
+#idCardPreview .hint { text-align: center; color: #666; font-size: 12px; line-height: 1.5; }
+@container (max-width: 520px) {
+  #idCardPreview .card { width: 100%; }
+  #idCardPreview .front { padding: 7px; }
+  #idCardPreview .content { grid-template-columns: 25% minmax(0,1fr); gap: 7px; padding: 5px 0 0; }
+  #idCardPreview .left { gap: 5px; }
+  #idCardPreview .photo { width: 92%; border-width: 1px; border-radius: 6px; }
+  #idCardPreview .fields { gap: clamp(5px,1.7cqw,9px); }
+  #idCardPreview .field { grid-template-columns: minmax(68px,40%) minmax(0,1fr); gap: 4px; }
+  #idCardPreview .field label { font-size: clamp(7px,1.8cqw,9px); }
+  #idCardPreview .value { font-size: clamp(8px,2.2cqw,11px); padding-bottom: 2px; border-bottom-width: 1px; }
+  #idCardPreview .value.small { font-size: clamp(7px,1.9cqw,10px); }
+  #idCardPreview .signature { font-size: 7px; }
+  #idCardPreview .sigline { height: 13px; }
+  #idCardPreview .back { padding: 7px; gap: 5px; }
+  #idCardPreview .backbox { padding: 7px; gap: 7px; }
+  #idCardPreview .backfields { gap: 5px; }
+  #idCardPreview .backqr-code { width: clamp(38px,14cqw,62px); padding: 2px; border-width: 1px; border-radius: 5px; }
+  #idCardPreview .qrpanel { grid-template-columns: minmax(0,1fr); justify-items: center; gap: 12px; }
+  #idCardPreview .qrpanel-svg, #idCardPreview .qrpanel-empty { width: 112px; height: 112px; }
+  #idCardPreview .bggrid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; padding: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #idCardPreview .card { transition: none; }
+  #idCardPreview .card-intro, #idCardPreview .card-float { animation: none; will-change: auto; }
+}
+@media print {
+  #idCardPreview .controls, #idCardPreview .hint, #idCardPreview .bggrid, #idCardPreview .bgsavenote, #idCardPreview .nfc-row, #idCardPreview .qrpanel { display: none !important; }
+  #idCardPreview .stage { display: block; }
+  #idCardPreview .card { width: 100%; max-width: 900px; }
+  #idCardPreview .face { box-shadow: none; }
+}

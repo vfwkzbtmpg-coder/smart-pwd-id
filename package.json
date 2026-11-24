@@ -1,0 +1,18 @@
+{
+  "name": "smart-pwd-id",
+  "version": "1.0.0",
+  "description": "Smart PWD ID System - Web & Mobile Platform",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "dependencies": {
+    "@supabase/server": "^1.4.1",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
+    "bcrypt": "^5.1.1",
+    "express": "^4.22.2",
+    "jsonwebtoken": "^9.0.2",
+    "sqlite3": "^5.1.6"
+  }
+}
