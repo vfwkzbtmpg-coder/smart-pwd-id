@@ -1,4 +1,7 @@
 {
+  "buildCommand": null,
+  "installCommand": "npm install",
+  "outputDirectory": "public",
   "rewrites": [
     {
       "source": "/((?!api/).*)",
