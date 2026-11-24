@@ -8,6 +8,7 @@ admin-react/node_modules/
 # Build output
 # ---------------------------------------------------------------
 admin-react/dist/
+admin-react/tsconfig.tsbuildinfo
 dist/
 build/
 
