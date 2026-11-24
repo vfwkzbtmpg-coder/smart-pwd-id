@@ -2,7 +2,7 @@
   'use strict';
 
   var SUPABASE_URL = 'https://fvyinioymlegzfhrahbt.supabase.co';
-  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2eWluaW95bWxlZ3pmaHJhaGJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwNzY1ODIsImV4cCI6MjEwMzY1MjU4Mn0.OfeEizyn3R3T5g1-Ry-6YQAYGwOc3V7pIA5Gg2S06QA';
+  var SUPABASE_ANON_KEY = 'sb_publishable_dKUs94y6AVkpr3LobPq1eQ_48Oeu-i7';
 
   function getCreateClient() {
     if (global.supabase && typeof global.supabase.createClient === 'function') {
