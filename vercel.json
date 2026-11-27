@@ -3,12 +3,6 @@
   "buildCommand": null,
   "installCommand": "npm install",
   "outputDirectory": "public",
-  "rewrites": [
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*).html",
