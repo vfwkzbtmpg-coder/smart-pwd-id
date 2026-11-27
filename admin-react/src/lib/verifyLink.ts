@@ -3,16 +3,17 @@ import QRCode from 'qrcode';
 /**
  * Everything that turns a PWD ID number into something a phone can open.
  *
- * The verification page lives on the Express site (server/server.js serves
- * public/), NOT on the console, so the address has to be one the phone can
- * actually reach — "localhost" means the phone itself and will never work.
- * The address is a per-installation setting the admin types once; it is kept
- * in localStorage so every card in the console builds the same link.
+ * The verification page lives at the site root (verify.html), one level above
+ * the /admin/ sub-path this console is published under, and it is served by
+ * GitHub Pages. So the address has to be the public site root: a phone tapping
+ * the tag has no way to reach "localhost", which only ever means the phone
+ * itself. The address stays a per-installation setting the admin can override,
+ * kept in localStorage so every card in the console builds the same link.
  */
 const STORAGE_KEY = 'smartpwd.verifyBaseUrl';
 
 /** Used until the admin saves an address of their own. */
-export const DEFAULT_VERIFY_BASE = 'http://localhost:4000';
+export const DEFAULT_VERIFY_BASE = 'https://vfwkzbtmpg-coder.github.io/smart-pwd-id';
 
 function trimBase(value: string): string {
   return String(value || '').trim().replace(/\/+$/, '');
