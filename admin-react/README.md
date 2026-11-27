@@ -131,10 +131,39 @@ npm run preview    # http://localhost:5173  (production build)
 
 ### 7. Deploy
 
-The output in `dist/` is a **fully static site** — deploy to:
-- **Vercel**: Connect repo → framework = Vite (auto-detected). Remember to set the **Production** env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) in **Project Settings → Environment Variables**.
-- **Netlify**: Drag & drop `dist/` or connect repo with `Build command = npm run build`, `Publish directory = dist`.
-- **Any static host**: S3 + CloudFront, GitHub Pages, Render, Cloudflare Pages, etc.
+Published on **GitHub Pages** at `https://<username>.github.io/smart-pwd-id/admin/`.
+The `gh-pages` branch is produced from the `publish-static/` folder with
+`git subtree split`, so the deployed copy is committed at `publish-static/admin/`
+(with a mirror in `public/admin/`).
+
+To republish after a change:
+
+```bash
+cd admin-react
+VITE_BASE_PATH=/smart-pwd-id/admin/ npm run build
+# copy dist/* into both public/admin/ and publish-static/admin/
+git subtree split --prefix=publish-static -b gh-pages-next
+git push --force origin gh-pages-next:gh-pages
+```
+
+Four things that make this work, and are easy to lose:
+
+- **`VITE_BASE_PATH`** becomes Vite's `base`. Omit it and the bundle requests
+  `/assets/...` from the domain root, so the page loads blank.
+- **`HashRouter`**, not `BrowserRouter`. GitHub Pages has no server-side rewrite,
+  so a path-based route 404s as soon as anyone refreshes or bookmarks it. Routes
+  therefore read `/smart-pwd-id/admin/#/dashboard`.
+- **`src/lib/api-client.js`** is a copy of the main portal's
+  `public/src/api-client.js`, loaded only in production builds. With
+  `server/server.js` not deployed, it answers `/api/*` in the browser using the
+  publishable key. Refresh it by hand if the portal's copy changes.
+- **`VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY`** are baked in at build
+  time from `.env`. Both are public client values — never put the service-role
+  key here.
+
+Not available on a static host: `/api/nfc/*` needs the kiosk service running on
+the kiosk PC (`NFC_KIOSK_URL` in `api-client.js`), so card enrolment reports the
+reader as offline everywhere else.
 
 ---
 

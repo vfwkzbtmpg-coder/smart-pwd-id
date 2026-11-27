@@ -14,6 +14,14 @@ import { ConfirmDialog } from './ui';
 import './DigitalIdCard.css';
 
 /**
+ * The LGU background PNGs are served from the site root, one level above the
+ * /admin/ sub-path this console is published under on GitHub Pages. BASE_URL is
+ * '/smart-pwd-id/admin/' there and '/' in dev, so '../backgrounds/' resolves to
+ * /smart-pwd-id/backgrounds/ and /backgrounds/ respectively.
+ */
+const BACKGROUND_BASE = `${import.meta.env.BASE_URL}../backgrounds/`;
+
+/**
  * One tile per Metro Manila LGU, backed by a file in public/backgrounds/ named
  * after the city. The slug is what gets stored on the application row, so the
  * cardholder's own dashboard renders the identical card.
@@ -196,7 +204,7 @@ export default function DigitalIdCard({
 
   const frontStyle: CSSProperties = bgFront
     ? {
-        backgroundImage: `url("/backgrounds/${bgFront}.png")`,
+        backgroundImage: `url("${BACKGROUND_BASE}${bgFront}.png")`,
         backgroundSize: '100% 100%',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -572,7 +580,7 @@ export default function DigitalIdCard({
                   <div className="bgmissing">no image</div>
                 ) : (
                   <img
-                    src={`/backgrounds/${slug}.png`}
+                    src={`${BACKGROUND_BASE}${slug}.png`}
                     alt={`${name} background`}
                     onError={() => setBgMissing((prev) => ({ ...prev, [slug]: true }))}
                   />

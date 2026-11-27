@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
 export default defineConfig({
+  // GitHub Pages serves this console from /<repository>/admin/, so the publish
+  // step sets VITE_BASE_PATH. Local dev keeps the default root base.
+  base: process.env.VITE_BASE_PATH || '/',
   plugins: [react()],
   resolve: {
     alias: {
