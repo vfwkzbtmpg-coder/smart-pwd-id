@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Reset your Smart PWD ID password.">
+  <title>Reset Password | Smart PWD ID</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <script>
+    // Read the Supabase recovery signal before supabase-js consumes it and
+    // clears it from the URL. Both link shapes are covered:
+    //   implicit flow -> #access_token=...&type=recovery
+    //   PKCE flow     -> ?code=...   (exchanged further down)
+    window.__SMART_PWD_RECOVERY_HINT = (function () {
+      var hash = window.location.hash || '';
+      var hashParams = new URLSearchParams(hash.charAt(0) === '#' ? hash.slice(1) : hash);
+      var queryParams = new URLSearchParams(window.location.search || '');
+      return hashParams.get('type') === 'recovery'
+        || !!hashParams.get('access_token')
+        || !!hashParams.get('error_code')
+        || queryParams.get('type') === 'recovery'
+        || !!queryParams.get('code');
+    })();
+  </script>
+</head>
+<body class="auth">
+
+  <main class="auth-container">
+
+    <section class="authbox reveal" aria-labelledby="reset-title">
+
+      <a class="brand" href="../index.html" aria-label="Smart PWD ID Home">
+        <img class="logo" src="https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=international%20access%20wheelchair%20symbol%20black%20silhouette%20white%20background%20flat%20vector&image_size=square_hd" alt="Smart PWD ID">
+        <span>
+          <strong>Smart PWD ID</strong>
+          <small>Secure web portal</small>
+        </span>
+      </a>
+
+      <div class="auth-heading">
+        <span class="eyebrow">PASSWORD RECOVERY</span>
+        <h1 id="reset-title">Reset your password</h1>
+        <p id="resetIntro">Enter the email linked to your account. We'll send you a secure link to set a new password.</p>
+      </div>
+
+      <!-- FORGOT PASSWORD: request the reset email -->
+      <form id="resetRequestForm" novalidate>
+
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            inputmode="email"
+            placeholder="you@example.com"
+            required
+            aria-describedby="email-error"
+          >
+          <small id="email-error" class="form-error" role="alert"></small>
+        </div>
+
+        <button
+          type="submit"
+          class="btn primary full"
+          id="resetButton"
+        >
+          <span id="resetButtonText">Send Reset Link →</span>
+          <span id="resetSpinner" class="login-spinner" aria-hidden="true">⟳</span>
+        </button>
+
+        <div
+          id="resetMessage"
+          class="login-message"
+          role="alert"
+          aria-live="polite"
+        ></div>
+
+      </form>
+
+      <!-- NEW PASSWORD: shown once the recovery link has been opened -->
+      <form id="resetUpdateForm" novalidate hidden>
+
+        <div class="form-group">
+          <label for="newPassword">New password</label>
+          <div class="password-field">
+            <input
+              id="newPassword"
+              name="newPassword"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Enter your new password"
+              required
+              minlength="6"
+              aria-describedby="new-password-error"
+            >
+            <button
+              type="button"
+              class="password-toggle"
+              id="toggleNewPassword"
+              aria-label="Show password"
+              aria-pressed="false"
+            >Show</button>
+          </div>
+          <small id="new-password-error" class="form-error" role="alert"></small>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm new password</label>
+          <div class="password-field">
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Re-enter your new password"
+              required
+              minlength="6"
+              aria-describedby="confirm-password-error"
+            >
+            <button
+              type="button"
+              class="password-toggle"
+              id="toggleConfirmPassword"
+              aria-label="Show password"
+              aria-pressed="false"
+            >Show</button>
+          </div>
+          <small id="confirm-password-error" class="form-error" role="alert"></small>
+        </div>
+
+        <button
+          type="submit"
+          class="btn primary full"
+          id="updateButton"
+        >
+          <span id="updateButtonText">Save New Password →</span>
+          <span id="updateSpinner" class="login-spinner" aria-hidden="true">⟳</span>
+        </button>
+
+      </form>
+
+      <div class="auth-features">
+        <span>✓ Link expires in 1 hour</span>
+        <span>✓ Sent by Supabase Auth</span>
+        <span>✓ Check your spam folder</span>
+      </div>
+
+      <p class="center">
+        Remembered it?
+        <a href="../login.html">Back to Sign In</a>
+      </p>
+
+      <p class="center">
+        No account?
+        <a href="../register.html">Create account</a>
+      </p>
+
+      <p class="back-home">
+        <a href="../index.html">← Back to Smart PWD ID</a>
+      </p>
+
+    </section>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../src/api-client.js"></script>
+  <script>
+    // Public client values only. The service-role key must never reach the browser.
+    const SUPABASE_URL = 'https://fvyinioymlegzfhrahbt.supabase.co';
+    const SUPABASE_PUBLIC_KEY =
+      'sb_publishable_dKUs94y6AVkpr3LobPq1eQ_48Oeu-i7';
+    window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    });
+  </script>
+  <script src="../js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async function () {
+      const requestForm = document.getElementById('resetRequestForm');
+      const updateForm = document.getElementById('resetUpdateForm');
+      const email = document.getElementById('email');
+      const requestBtn = document.getElementById('resetButton');
+      const requestBtnText = document.getElementById('resetButtonText');
+      const requestSpinner = document.getElementById('resetSpinner');
+      const newPassword = document.getElementById('newPassword');
+      const confirmPassword = document.getElementById('confirmPassword');
+      const updateBtn = document.getElementById('updateButton');
+      const updateBtnText = document.getElementById('updateButtonText');
+      const updateSpinner = document.getElementById('updateSpinner');
+      const msg = document.getElementById('resetMessage');
+      const intro = document.getElementById('resetIntro');
+      const emailErr = document.getElementById('email-error');
+      const newErr = document.getElementById('new-password-error');
+      const confirmErr = document.getElementById('confirm-password-error');
+
+      function clearErrors() {
+        emailErr.textContent = '';
+        newErr.textContent = '';
+        confirmErr.textContent = '';
+        msg.textContent = '';
+        msg.className = 'login-message';
+      }
+
+      function say(message, kind) {
+        msg.textContent = message;
+        msg.className = 'login-message' + (kind ? ' ' + kind : '');
+      }
+
+      function setRequestLoading(on) {
+        requestBtn.disabled = !!on;
+        requestSpinner.classList.toggle('show', !!on);
+        requestBtnText.textContent = on ? 'Sending link…' : 'Send Reset Link →';
+      }
+
+      function setUpdateLoading(on) {
+        updateBtn.disabled = !!on;
+        updateSpinner.classList.toggle('show', !!on);
+        updateBtnText.textContent = on ? 'Saving password…' : 'Save New Password →';
+      }
+
+      function setUpdateEnabled(on) {
+        updateBtn.disabled = !on;
+      }
+
+      // GitHub Pages serves this repository from /<repository>/, so the reset
+      // link is built from the URL this page was actually served from instead
+      // of a hardcoded host. On the Pages site that yields
+      // https://<username>.github.io/<repository>/reset-password
+      function siteBasePath() {
+        const path = window.location.pathname || '/';
+        const marker = '/reset-password/';
+        const at = path.toLowerCase().indexOf(marker);
+        if (at !== -1) return path.slice(0, at + 1);
+        return path.replace(/[^/]*$/, '');
+      }
+
+      function resetRedirectUrl() {
+        return window.location.origin + siteBasePath() + 'reset-password';
+      }
+
+      function isRecoveryLink() {
+        if (window.__SMART_PWD_RECOVERY_HINT) return true;
+        const hash = window.location.hash || '';
+        const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
+        const search = new URLSearchParams(window.location.search || '');
+        return params.get('type') === 'recovery'
+          || !!params.get('access_token')
+          || !!search.get('code')
+          || search.get('type') === 'recovery';
+      }
+
+      function showRequestMode() {
+        requestForm.hidden = false;
+        updateForm.hidden = true;
+        intro.textContent = "Enter the email linked to your account. We'll send you a secure link to set a new password.";
+      }
+
+      function showUpdateMode() {
+        requestForm.hidden = true;
+        updateForm.hidden = false;
+        intro.textContent = 'Open the email link, then set your new password here.';
+      }
+
+      async function ensureRecoverySession() {
+        const search = new URLSearchParams(window.location.search || '');
+        const code = search.get('code');
+
+        // Newer Supabase recovery links often arrive with a PKCE `code` query
+        // param. Exchange it explicitly so updateUser() has a real recovery
+        // session to work with on this page.
+        if (code && supabase.auth && typeof supabase.auth.exchangeCodeForSession === 'function') {
+          const exchanged = await supabase.auth.exchangeCodeForSession(code);
+          if (exchanged && exchanged.error) return { ok: false, message: exchanged.error.message };
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname + '#type=recovery');
+          }
+        }
+
+        // Hash-style recovery links are handled by detectSessionInUrl, but that
+        // can settle a moment after DOMContentLoaded. Give it a brief window.
+        for (let i = 0; i < 10; i++) {
+          const sessionRes = await supabase.auth.getSession();
+          if (sessionRes && sessionRes.data && sessionRes.data.session) {
+            return { ok: true };
+          }
+          await new Promise(function (resolve) { setTimeout(resolve, 200); });
+        }
+        return { ok: false, message: 'This reset link is missing, expired, or already used.' };
+      }
+
+      function wireToggle(toggleId, input) {
+        const toggle = document.getElementById(toggleId);
+        if (!toggle) return;
+        toggle.addEventListener('click', function () {
+          const show = input.type === 'password';
+          input.type = show ? 'text' : 'password';
+          toggle.textContent = show ? 'Hide' : 'Show';
+          toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+          toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        });
+      }
+      wireToggle('toggleNewPassword', newPassword);
+      wireToggle('toggleConfirmPassword', confirmPassword);
+
+      email.addEventListener('input', function () { emailErr.textContent = ''; });
+      newPassword.addEventListener('input', function () { newErr.textContent = ''; });
+      confirmPassword.addEventListener('input', function () { confirmErr.textContent = ''; });
+
+      // supabase-js raises this as soon as it has traded the recovery link for
+      // a session, so the form unlocks even if the URL was already cleaned up.
+      supabase.auth.onAuthStateChange(function (event) {
+        if (event === 'PASSWORD_RECOVERY') {
+          showUpdateMode();
+          setUpdateEnabled(true);
+        }
+      });
+
+      if (isRecoveryLink()) {
+        showUpdateMode();
+        setUpdateEnabled(false);
+        const recovery = await ensureRecoverySession();
+        if (!recovery.ok) {
+          say(recovery.message || 'Could not open the reset link. Request a new one and try again.', 'error');
+        } else {
+          setUpdateEnabled(true);
+          newPassword.focus();
+        }
+      } else showRequestMode();
+
+      requestForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        clearErrors();
+
+        const emailVal = (email.value || '').trim().toLowerCase();
+        if (!emailVal) {
+          emailErr.textContent = 'Please enter your email address.';
+          email.focus();
+          return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+          emailErr.textContent = 'Please enter a valid email address.';
+          email.focus();
+          return;
+        }
+
+        setRequestLoading(true);
+
+        // Send recovery emails to this GitHub Pages deployment.
+        const { error } = await supabase.auth.resetPasswordForEmail(emailVal, {
+          redirectTo: resetRedirectUrl(),
+        });
+
+        setRequestLoading(false);
+
+        if (error) {
+          say(error.message || 'We could not send the reset link. Please try again.', 'error');
+          return;
+        }
+
+        say('Password reset link sent. Check your inbox (and spam folder) for the secure link.', 'success');
+        requestForm.reset();
+      });
+
+      updateForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        clearErrors();
+
+        const newVal = newPassword.value || '';
+        const confirmVal = confirmPassword.value || '';
+
+        if (!newVal) {
+          newErr.textContent = 'Please enter your new password.';
+          newPassword.focus();
+          return;
+        }
+        if (newVal.length < 6) {
+          newErr.textContent = 'New password must be at least 6 characters.';
+          newPassword.focus();
+          return;
+        }
+        if (newVal !== confirmVal) {
+          confirmErr.textContent = 'New passwords do not match.';
+          confirmPassword.focus();
+          return;
+        }
+
+        setUpdateLoading(true);
+
+        const sessionRes = await supabase.auth.getSession();
+        if (!sessionRes || !sessionRes.data || !sessionRes.data.session) {
+          setUpdateLoading(false);
+          say('Reset session not found. Open the reset-password email link again and try once more.', 'error');
+          return;
+        }
+
+        const updateRes = await supabase.auth.updateUser({ password: newVal });
+        setUpdateLoading(false);
+
+        if (updateRes && updateRes.error) {
+          say(updateRes.error.message || 'Could not update the password. Open this page from the reset-password email and try again.', 'error');
+          return;
+        }
+
+        say('Password updated successfully. Signing you in…', 'success');
+        updateForm.reset();
+        let target = '../dashboard.html';
+        try {
+          const currentUser = (window.SmartPWDAuth && typeof SmartPWDAuth.currentUser === 'function')
+            ? await SmartPWDAuth.currentUser()
+            : null;
+          if (currentUser && currentUser.role === 'verifier') target = '../verifier.html';
+          else if (currentUser && currentUser.role === 'admin') target = '../admin.html';
+        } catch (_) {}
+        setTimeout(function () {
+          window.location.href = target;
+        }, 700);
+      });
+    });
+  </script>
+
+  <script src="../js/app.js"></script>
+
+</body>
+</html>
