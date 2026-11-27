@@ -185,6 +185,7 @@
 
   <!-- Global JavaScript -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="src/api-client.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     (function () {
@@ -349,15 +350,23 @@
             if (downloadPwdQr) downloadPwdQr.disabled = true;
             return;
           }
+          // The code must carry the holder's secret as well as the ID number:
+          // an ID number alone is guessable, and the secret is reissued on
+          // every Approve / Reject so an older printed code stops verifying.
+          const qrToken = String(user.qrToken || '').trim();
+          const qrLink = new URL('verify.html', window.location.href);
+          qrLink.searchParams.set('id', idNumber);
+          if (qrToken) qrLink.searchParams.set('t', qrToken);
+
           new window.QRCode(pwdQrCanvas, {
-            text: idNumber,
+            text: qrLink.href,
             width: 144,
             height: 144,
             colorDark: '#152a47',
             colorLight: '#ffffff',
             correctLevel: window.QRCode.CorrectLevel.M,
           });
-          if (pwdQrStatus) pwdQrStatus.textContent = 'Ready to scan. This QR contains only your PWD ID number.';
+          if (pwdQrStatus) pwdQrStatus.textContent = 'Ready to scan. This QR opens your verification page.';
           if (downloadPwdQr) downloadPwdQr.disabled = false;
         }
         function showMethodMessage(node, message, tone) {

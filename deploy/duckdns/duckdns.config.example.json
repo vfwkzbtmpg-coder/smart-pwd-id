@@ -1,0 +1,7 @@
+{
+  "domain": "smartpwdgov",
+  "token": "PASTE-YOUR-DUCKDNS-TOKEN-HERE",
+  "publishIpv4": true,
+  "publishIpv6": true,
+  "logFile": "C:\\ProgramData\\SmartPWDID\\logs\\duckdns.log"
+}

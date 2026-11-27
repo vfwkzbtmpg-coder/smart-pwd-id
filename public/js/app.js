@@ -31,11 +31,103 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function loadSettings() {
     try {
-      return Object.assign({}, defaults, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"));
+      const settings = Object.assign({}, defaults, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"));
+      settings.language = settings.language === "Filipino" ? "Filipino" : "English";
+      return settings;
     } catch (e) {
       return Object.assign({}, defaults);
     }
   }
+
+  const filipinoSettings = {
+    "Accessibility Settings": "Mga Setting ng Accessibility",
+    "Personalize your Smart PWD ID experience for full inclusion": "Iangkop ang Smart PWD ID sa iyong mga pangangailangan",
+    "Close settings": "Isara ang mga setting",
+    "Account": "Account",
+    "Vision": "Paningin",
+    "Hearing": "Pandinig",
+    "Motor & Input": "Paggalaw at Pag-input",
+    "Cognitive": "Pag-unawa",
+    "Language": "Wika",
+    "Choose the website language": "Piliin ang wika ng website",
+    "Select language": "Pumili ng wika",
+    "Your choice is saved on this device.": "Naka-save sa device na ito ang iyong piniling wika.",
+    "Personal Settings": "Mga Personal na Setting",
+    "First Name": "Pangalan",
+    "Last Name": "Apelyido",
+    "Mobile Number": "Numero ng Cellphone",
+    "Email Address": "Email Address",
+    "Email address cannot be changed.": "Hindi maaaring baguhin ang email address.",
+    "Save Changes": "I-save ang mga Pagbabago",
+    "Change Password": "Palitan ang Password",
+    "Current Password": "Kasalukuyang Password",
+    "New Password": "Bagong Password",
+    "Confirm New Password": "Kumpirmahin ang Bagong Password",
+    "Use at least 6 characters.": "Gumamit ng hindi bababa sa 6 na character.",
+    "Update Password": "I-update ang Password",
+    "Show": "Ipakita",
+    "Hide": "Itago",
+    "Show password": "Ipakita ang password",
+    "Hide password": "Itago ang password",
+    "Large Text": "Malaking Teksto",
+    "Increase readable text size across the whole site": "Lakihan ang teksto sa buong website upang madaling mabasa",
+    "Toggle large text": "I-on o i-off ang malaking teksto",
+    "High Contrast": "Mataas na Contrast",
+    "Dark / bold color scheme for better visual clarity": "Gumamit ng mas matingkad na mga kulay para mas malinaw makita",
+    "Toggle high contrast": "I-on o i-off ang mataas na contrast",
+    "Visible Focus Ring": "Malinaw na Balangkas ng Focus",
+    "Always show bright focus outline when tabbing": "Ipakita ang malinaw na balangkas kapag ginagamit ang Tab",
+    "Toggle focus ring": "I-on o i-off ang balangkas ng focus",
+    "Dark Mode": "Madilim na Tema",
+    "Switch the whole interface to a comfortable dark theme": "Gumamit ng madilim na tema na komportable sa mata",
+    "Toggle dark mode": "I-on o i-off ang madilim na tema",
+    "Reduced Motion": "Bawas na Galaw",
+    "Minimize animations, transitions and parallax": "Bawasan ang mga animation, transition at gumagalaw na background",
+    "Toggle reduced motion": "I-on o i-off ang pagbawas ng galaw",
+    "Sign Language Overlay": "Overlay ng Sign Language",
+    "Configure a digital signer overlay for post-production platforms (SignStudio, Adobe Premiere, overlay editors).": "I-configure ang overlay ng digital signer para sa mga platform ng pag-edit ng video (SignStudio, Adobe Premiere, mga overlay editor).",
+    "Toggle sign language overlay": "I-on o i-off ang overlay ng sign language",
+    "Visual Alerts": "Mga Biswal na Abiso",
+    "Replace audio beeps with flashing visual notifications": "Palitan ang mga tunog ng kumikislap na biswal na abiso",
+    "Toggle visual alerts": "I-on o i-off ang mga biswal na abiso",
+    "Transcript Captions": "Mga Caption",
+    "Display text captions for any voice / video content": "Ipakita ang mga caption para sa nilalamang audio o video",
+    "Toggle live captions": "I-on o i-off ang mga live caption",
+    "Voice Assistance": "Tulong na Boses",
+    "Read buttons, links and alerts aloud automatically": "Awtomatikong basahin nang malakas ang mga button, link at abiso",
+    "Toggle voice assistance": "I-on o i-off ang tulong na boses",
+    "Larger Tap Targets": "Mas Malalaking Button",
+    "Increase button sizes for easier tapping / clicking": "Lakihan ang mga button para mas madaling i-tap o i-click",
+    "Toggle larger tap targets": "I-on o i-off ang mas malalaking button",
+    "Screen Reader Mode": "Mode ng Screen Reader",
+    "Add ARIA landmarks, skip link and semantic labels": "Magdagdag ng mga ARIA landmark, skip link at label para sa screen reader",
+    "Toggle screen reader mode": "I-on o i-off ang mode ng screen reader",
+    "Simple Interface": "Simpleng Interface",
+    "Hide decorative visuals, keep only core controls": "Itago ang mga dekorasyon at panatilihin ang mahahalagang kontrol",
+    "Toggle simple interface": "I-on o i-off ang simpleng interface",
+    "Plain Language": "Payak na Pananalita",
+    "Simplify copy and highlight the most important info": "Pasimplehin ang teksto at bigyang-diin ang pinakamahalagang impormasyon",
+    "Toggle plain language": "I-on o i-off ang payak na pananalita",
+    "Read Aloud \u2014 Page Content": "Basahin nang Malakas ang Pahina",
+    "Read all visible headings and paragraphs right now": "Basahin ngayon ang lahat ng nakikitang pamagat at talata",
+    "Read page content aloud": "Basahin nang malakas ang nilalaman ng pahina",
+    "Reset All to Defaults": "Ibalik ang Lahat sa Default",
+    "Tip: Press": "Tip: Pindutin ang",
+    "anytime to re-open Accessibility Settings.": "anumang oras upang buksan muli ang mga setting ng accessibility."
+  };
+
+  // The same language preference now applies to every portal page and to
+  // content added later by API responses, dialogs and notifications.
+  function applySettingsLanguage(panel, language) {
+    if (window.SmartPWDLanguage) window.SmartPWDLanguage.setLanguage(language);
+  }
+
+  const appScript = document.querySelector('script[src$="js/app.js"]');
+  const languageScript = document.createElement("script");
+  languageScript.src = new URL("language.js", appScript ? appScript.src : new URL("js/app.js", location.href)).href;
+  languageScript.onload = () => window.SmartPWDLanguage.start(loadSettings().language, filipinoSettings);
+  languageScript.onerror = () => console.error("Could not load website translations. Refresh the page to try again.");
+  document.head.appendChild(languageScript);
 
   // Fetch FSL library from Supabase and cache it
   async function initFSLData() {
@@ -151,12 +243,16 @@ document.addEventListener("DOMContentLoaded", () => {
     cls.toggle("plain-language", !!s.plainLanguage);
     toggleSignLanguageWidget(!!s.signLanguage);
     toggleFSLVideoPlayer(!!s.signLanguage);
+    const panel = document.getElementById("settingsPanel");
+    if (panel) applySettingsLanguage(panel, s.language);
   }
 
   function speak(text) {
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
+      const translated = window.SmartPWDLanguage ? window.SmartPWDLanguage.translate(text) : text;
+      const u = new SpeechSynthesisUtterance(translated);
+      u.lang = loadSettings().language === "Filipino" ? "fil-PH" : "en-PH";
       u.rate = 0.95;
       u.pitch = 1;
       window.speechSynthesis.speak(u);
@@ -235,6 +331,8 @@ document.addEventListener("DOMContentLoaded", () => {
     toggle.textContent = show ? "Hide" : "Show";
     toggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
     toggle.setAttribute("aria-pressed", String(show));
+    const panel = toggle.closest("#settingsPanel");
+    if (panel) applySettingsLanguage(panel, loadSettings().language);
   });
 
   // Settings trigger
@@ -303,6 +401,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <button class="sp-tab" data-sptab="hearing">Hearing</button>
         <button class="sp-tab" data-sptab="motor">Motor &amp; Input</button>
         <button class="sp-tab" data-sptab="cognitive">Cognitive</button>
+        <button class="sp-tab" data-sptab="language">Language</button>
       </div>
 
       <div class="sp-panes">
@@ -531,20 +630,23 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
             <button class="switch" id="readToggle" aria-label="Read page content aloud"><i></i></button>
           </div>
+        </div>
 
+        <div class="sp-pane" data-spane="language">
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-icon">⚙</span>
               <div>
-                <b>Language</b>
-                <small>Choose interface language</small>
+                <label for="langSelect"><b>Language</b></label>
+                <small>Choose the website language</small>
               </div>
             </div>
             <select class="setting-select" id="langSelect" aria-label="Select language">
-              <option>English</option>
-              <option>Filipino</option>
+              <option value="English" lang="en">English</option>
+              <option value="Filipino" lang="fil">Filipino</option>
             </select>
           </div>
+          <p class="sp-sub" id="languageStatus" role="status" aria-live="polite">Your choice is saved on this device.</p>
         </div>
       </div>
 
@@ -856,9 +958,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     ls?.addEventListener("change", () => {
       const cur = loadSettings();
-      cur.language = ls.value;
+      cur.language = ls.value === "Filipino" ? "Filipino" : "English";
       saveSettings(cur);
-      if (loadSettings().voice) speak(`Language changed to ${ls.value}.`);
+      applySettingsLanguage(p, cur.language);
+      if (cur.voice) speak(`Language changed to ${cur.language}.`);
     });
 
     document.getElementById("settingsReset").onclick = () => {
@@ -870,6 +973,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (loadSettings().voice) speak("All settings reset to defaults.");
     };
 
+    applySettingsLanguage(p, s.language);
     if (loadSettings().voice) speak("Accessibility settings panel is now open.");
   }
 
@@ -1909,7 +2013,7 @@ li.fsl-sentence-active, li.fsl-sentence { position: relative; }
         if (processed.has(el)) return;
         if (el.closest("#fsl-pip, #signbridge, #settings-backdrop, .settings-panel, .modal, #login-message, #fsl-toast")) return;
         if (el.closest("header.top, aside.sidebar")) return;
-        const text = (el.textContent || "").trim();
+        const text = (window.SmartPWDLanguage ? window.SmartPWDLanguage.sourceText(el) : (el.textContent || "")).trim();
         if (text.replace(/\s+/g, "").length < 6) return;
         processed.add(el);
         el.classList.add(SENTENCE_CLASS);

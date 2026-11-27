@@ -239,8 +239,9 @@ Complete each item below before signing off on a release. Ticked boxes = verifie
 - [ ] **Quick actions sidebar**: Back to list, Email applicant, Copy summary — all work
       (Copy summary uses `navigator.clipboard` and shows an info toast)
 - [ ] **Document links**: uploaded URLs render as "View <Label>" green-tinted buttons
-      that open in `target="_blank" rel="noopener noreferrer"`; missing uploads render
-      as dashed-border "Label — Not uploaded" placeholders
+      that open an **in-page preview overlay** (images inline, PDFs in an embedded
+      frame; Esc / Close / backdrop closes it — no new browser tab); missing uploads
+      render as dashed-border "Label — Not uploaded" placeholders
 
 ### 🍞 Toast System
 

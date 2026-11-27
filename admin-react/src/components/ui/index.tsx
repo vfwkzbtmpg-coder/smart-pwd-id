@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { STATUS_UI_META } from '../../../config/dbSchemaConfig';
 import type { ApplicationStatusUi } from '../../../config/dbSchemaConfig';
 
@@ -188,7 +188,68 @@ export function safeText(v: unknown): string {
   return String(v);
 }
 
+type DocKind = 'image' | 'pdf' | 'other';
+
+function docKind(url: string): DocKind {
+  const path = url.split(/[?#]/)[0].toLowerCase();
+  if (/\.(png|jpe?g|gif|webp|avif|bmp|svg)$/.test(path)) return 'image';
+  if (/\.pdf$/.test(path)) return 'pdf';
+  return 'other';
+}
+
+export function DocPreviewModal({
+  label,
+  url,
+  onClose,
+}: {
+  label: string;
+  url: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const kind = docKind(url);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-slate-900/70 backdrop-blur-sm p-0 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${label} preview`}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-t-2xl">
+        <span className="truncate text-sm font-semibold text-slate-900">{label}</span>
+        <button type="button" className="btn-secondary !px-3 !py-1.5 text-xs" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <div
+        className="flex flex-1 items-center justify-center overflow-auto bg-slate-100 p-2 sm:rounded-b-2xl"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        {kind === 'image' && (
+          <img src={url} alt={label} className="max-h-full max-w-full object-contain" />
+        )}
+        {kind === 'pdf' && (
+          <iframe src={url} title={label} className="h-[75vh] w-full bg-white" />
+        )}
+        {kind === 'other' && (
+          <p className="p-6 text-center text-sm text-slate-600">
+            This file type can’t be previewed in the console.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function DocLink({ label, url }: { label: string; url: string | null }) {
+  const [open, setOpen] = useState(false);
+
   if (!url) {
     return (
       <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-500">
@@ -197,19 +258,18 @@ export function DocLink({ label, url }: { label: string; url: string | null }) {
     );
   }
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-brand-700 ring-1 ring-slate-200 hover:bg-brand-50"
-    >
-      <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-        <path fill="currentColor" d="M12 2a10 10 0 0 0-7.35 16.76l-.94 3.39 3.49-.92A10 10 0 1 0 12 2Zm2 14h-4v-2h4Zm0-4h-4V8h4Z"/>
-      </svg>
-      View {label}
-      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true">
-        <path fill="currentColor" d="M14 3h7v7h-2V6.41l-9.3 9.3-1.4-1.42L17.58 5H14Zm-9 4h5v2H7v11h11v-5h2v7H5Z"/>
-      </svg>
-    </a>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-brand-700 ring-1 ring-slate-200 hover:bg-brand-50"
+      >
+        <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+          <path fill="currentColor" d="M12 5c-5 0-9 4.5-9 7s4 7 9 7 9-4.5 9-7-4-7-9-7Zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>
+        </svg>
+        View {label}
+      </button>
+      {open && <DocPreviewModal label={label} url={url} onClose={() => setOpen(false)} />}
+    </>
   );
 }

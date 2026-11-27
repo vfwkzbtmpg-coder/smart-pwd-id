@@ -91,6 +91,9 @@
       profileRole
       || (accountType === 'establishment' ? 'verifier' : (accountType === 'admin' ? 'admin' : 'pwd'));
     const idNumber = (profile && profile.id_number) || '';
+    // The secret the holder's own QR code has to carry. Reissued by the admin
+    // on every Approve / Reject, so an older printed code stops verifying.
+    const qrToken = (profile && profile.qr_token) || '';
     const createdAt =
       (authUser && authUser.created_at) || (profile && profile.created_at) || new Date().toISOString();
     const appStatus = (profile && profile.application_status) || 'Not Submitted';
@@ -106,6 +109,7 @@
       accountType: accountType,
       role: role,
       idNumber: idNumber,
+      qrToken: qrToken,
       createdAt: createdAt,
       validUntil: validUntil,
       application: {
@@ -122,7 +126,10 @@
 
     if (!options.force) {
       const cached = readProfileCache();
-      if (cached && cached.id === uid) return cached;
+      // A row cached before migration 012 has no qr_token, and a QR built from
+      // it would be rejected by the verifier — so treat it as stale and refetch
+      // once. The read below rewrites the cache, so this happens only once.
+      if (cached && cached.id === uid && 'qr_token' in cached) return cached;
     }
 
     const sb = supabaseOrThrow();

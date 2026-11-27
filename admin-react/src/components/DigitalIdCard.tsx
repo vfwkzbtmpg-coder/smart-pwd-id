@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
-import { fmtBirthdate, fmtDay, saveCardBackground } from '../lib/adminQueries';
+import { fmtBirthdate, fmtDay, saveCardBackground, unlinkNfcCard } from '../lib/adminQueries';
 import {
   buildVerifyLink,
   getVerifyBaseUrl,
@@ -10,6 +10,7 @@ import {
 } from '../lib/verifyLink';
 import type { DigitalIdCardData } from '../types';
 import type { ApplicationStatusUi } from '../../config/dbSchemaConfig';
+import { ConfirmDialog } from './ui';
 import './DigitalIdCard.css';
 
 /**
@@ -105,9 +106,13 @@ export default function DigitalIdCard({
   const [qrSvg, setQrSvg] = useState('');
   const [linkNote, setLinkNote] = useState<{ text: string; error: boolean } | null>(null);
 
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+
   // Only an approved application carries an ID number, and the verify endpoint
   // refuses anything else — so the QR and the NFC link exist only from there on.
-  const verifyLink = buildVerifyLink(baseUrl, card.idNumber);
+  // The token makes the code unforgeable; Approve / Reject replaces it.
+  const verifyLink = buildVerifyLink(baseUrl, card.idNumber, card.qrToken);
 
   useEffect(() => {
     if (!verifyLink) {
@@ -324,6 +329,24 @@ export default function DigitalIdCard({
     } catch {
       /* nothing to recover — the reader is left disarmed either way */
     }
+  };
+
+  /**
+   * The "my card was lost or stolen" counter action. Detaching the tag is what
+   * actually stops someone else tapping it, so this is separate from the QR
+   * token that Approve / Reject rotates.
+   */
+  const removeLostCard = async () => {
+    setUnlinking(true);
+    const result = await unlinkNfcCard(userId);
+    setUnlinking(false);
+    setConfirmUnlink(false);
+    setNfcNote({
+      text: result.ok
+        ? 'Lost card detached. The old tag no longer verifies — run Reader NFC Scan to issue the replacement.'
+        : result.message,
+      tone: result.ok ? '' : 'error',
+    });
   };
 
   const photoSrc = photoOverride || card.photoUrl;
@@ -573,6 +596,16 @@ export default function DigitalIdCard({
               Cancel Scan
             </button>
           )}
+          {/* Reported lost or stolen: drop the tag so the old card cannot be
+              tapped through, then issue the replacement with Reader NFC Scan. */}
+          <button
+            type="button"
+            className="secondary"
+            disabled={nfcArmed || unlinking}
+            onClick={() => setConfirmUnlink(true)}
+          >
+            Remove NFC CARD OLD
+          </button>
           {nfcNote?.text && <span className={`nfc-note ${nfcNote.tone}`.trim()}>{nfcNote.text}</span>}
         </div>
       )}
@@ -658,6 +691,35 @@ export default function DigitalIdCard({
         Responsive sample card. Use the buttons to flip the card or print the demo. This is not an official
         government ID.
       </p>
+
+      <ConfirmDialog
+        open={confirmUnlink}
+        title="Remove the old NFC card?"
+        description="Use this when the holder reports their card lost or stolen. The tag is detached from this holder immediately, so the old card stops verifying at any reader."
+        confirmLabel={unlinking ? 'Removing…' : 'Remove old card'}
+        cancelLabel="Keep card"
+        danger
+        loading={unlinking}
+        onConfirm={() => void removeLostCard()}
+        onCancel={() => !unlinking && setConfirmUnlink(false)}
+      >
+        <div className="rounded-lg bg-slate-50 ring-1 ring-slate-200 p-3 space-y-2 text-xs">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-slate-500 font-semibold">Holder</span>
+            <span className="text-slate-800 font-semibold truncate max-w-[60%]">
+              {card.name || 'This holder'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-slate-500 font-semibold">PWD ID</span>
+            <span className="font-mono text-slate-800">{card.idNumber || '—'}</span>
+          </div>
+          <p className="pt-1 text-slate-600">
+            The QR code and NFC tag are reissued whenever this application is approved or rejected, so
+            the replacement is issued by running <b>Reader NFC Scan</b> after this.
+          </p>
+        </div>
+      </ConfirmDialog>
     </div>
   );
 }

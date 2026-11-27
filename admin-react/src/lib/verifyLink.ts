@@ -47,12 +47,20 @@ export function isLocalOnly(baseUrl: string): boolean {
 /**
  * The link a QR code prints and an NFC tag stores. verify.html reads `id` back
  * out of the query string and verifies it on load, so a tap needs no typing.
+ *
+ * `token` is the holder's profiles.qr_token. It is what makes the code
+ * unforgeable: an ID number is guessable, the token is not, and Approve /
+ * Reject reissues it so a photocopied card stops working at the next decision.
+ * It is omitted when migration 012 has not been run, which keeps the old
+ * ID-number-only links working.
  */
-export function buildVerifyLink(baseUrl: string, idNumber: string): string {
+export function buildVerifyLink(baseUrl: string, idNumber: string, token?: string | null): string {
   const id = String(idNumber || '').trim();
   if (!id) return '';
   const base = trimBase(baseUrl) || DEFAULT_VERIFY_BASE;
-  return `${base}/verify.html?id=${encodeURIComponent(id)}`;
+  const link = `${base}/verify.html?id=${encodeURIComponent(id)}`;
+  const secret = String(token || '').trim();
+  return secret ? `${link}&t=${encodeURIComponent(secret)}` : link;
 }
 
 /**

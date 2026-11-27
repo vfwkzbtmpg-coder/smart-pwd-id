@@ -122,6 +122,7 @@ export const PROFILE_COLUMNS = {
   role: 'role',
   account_type: 'account_type',
   application_status: 'application_status',
+  qr_token: 'qr_token',
   created_at: 'created_at',
   updated_at: 'updated_at',
 } as const;

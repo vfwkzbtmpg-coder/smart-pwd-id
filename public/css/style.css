@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿* {
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿* {
   box-sizing: border-box;
 }
 
@@ -467,6 +467,47 @@ body.dark-mode .nav-avatar-item[data-nav-action="logout"]:hover {
   border-radius: 10px;
   padding: 9px 12px;
   font-size: 16px;
+}
+
+/* Compact English / Filipino switch, mounted only on pages that have no
+   accessibility settings trigger (sign in, registration, password reset). */
+.lang-switch {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 60;
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 6px 18px #0c2b5014;
+}
+
+.lang-switch button {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.lang-switch button[aria-pressed="true"] {
+  background: var(--blue);
+  color: #fff;
+}
+
+body.dark-mode .lang-switch {
+  background: var(--bg);
+}
+
+body.high-contrast .lang-switch {
+  border-width: 2px;
 }
 
 .hero {
@@ -1267,6 +1308,13 @@ body.dark-mode .auth-hero {
 
 .sp-pane { display: none; }
 .sp-pane.active { display: block; animation: fadeIn .25s ease; }
+
+/* Keep controls reachable when wrapped tabs fill a short viewport. */
+@media (max-height: 600px) {
+  .settings-panel { overflow-y: auto; }
+  .settings-panel > * { flex-shrink: 0; }
+  .settings-panel .sp-panes { flex: none; overflow: visible; }
+}
 
 .setting-row {
   display: flex;
@@ -3423,9 +3471,9 @@ body.focus-ring *:focus-visible {
 }
 .settings-panel .sp-pane.active {
   display: block;
-  animation: panelIn 240ms ease-out both;
+  animation: settingsPaneIn 240ms ease-out both;
 }
-@keyframes panelIn {
+@keyframes settingsPaneIn {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
 }

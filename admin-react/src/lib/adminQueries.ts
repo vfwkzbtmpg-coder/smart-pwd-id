@@ -273,6 +273,7 @@ export async function fetchApplicationsJoined(
       applicant,
       card: {
         idNumber: applicant.id_number ?? '',
+        qrToken: '', // filled in by fetchApplicationById — see fetchQrToken
         name: buildApplicantName(applicant),
         disabilityType: legacyBirthdate ? '' : legacyDisabilityType,
         birthdate,
@@ -351,7 +352,64 @@ export async function fetchApplicationById(
     r.applicantEmail = email;
     r.applicant.email = email;
   }
+
+  const qrToken = await fetchQrToken(r.user_id);
+  if (qrToken) r.card.qrToken = qrToken;
   return { row: r, error: null };
+}
+
+/**
+ * The holder's QR secret, kept out of the shared application select so the
+ * console still lists applications on a database that has not run migration
+ * 012 yet — it just builds ID-number-only links, as it did before.
+ */
+async function fetchQrToken(userId: string): Promise<string | null> {
+  if (!userId) return null;
+  try {
+    const { data, error } = await supabase
+      .from(APP_TABLE_NAMES.profiles)
+      .select(PROFILE_COLUMNS.qr_token)
+      .eq(PROFILE_COLUMNS.id, userId)
+      .maybeSingle();
+    if (error) return null;
+    const token = (data as Record<string, unknown> | null)?.[PROFILE_COLUMNS.qr_token];
+    return token ? String(token) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Detaches a lost NFC card from a holder. Runs through the Express service
+ * because it needs the service-role key to clear both nfc_uid and the legacy
+ * nfc_id column, and because RLS only lets a cardholder edit their own row.
+ */
+export async function unlinkNfcCard(
+  userId: string
+): Promise<{ ok: boolean; message: string }> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token ?? '';
+    const res = await fetch(`/api/profiles/${encodeURIComponent(userId)}/nfc-card`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json || !json.ok) {
+      return {
+        ok: false,
+        message: (json && json.message) || `The admin service refused the request (${res.status}).`,
+      };
+    }
+    return { ok: true, message: json.message || 'The lost NFC card has been unlinked.' };
+  } catch (err) {
+    return {
+      ok: false,
+      message:
+        (err as Error)?.message ||
+        'Could not reach the admin service. Make sure the API on port 4000 is running.',
+    };
+  }
 }
 
 export async function fetchApplicationStats(): Promise<{

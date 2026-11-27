@@ -192,6 +192,12 @@ export interface ApplicationRow {
 export interface DigitalIdCardData {
   /** profiles.id_number once issued, otherwise blank ("PENDING" is shown). */
   idNumber: string;
+  /**
+   * profiles.qr_token — the secret the QR code and NFC tag must carry. Rotated
+   * on every Approve / Reject, so the printed code only matches the card that
+   * was issued last. Empty when migration 012 has not been run.
+   */
+  qrToken: string;
   name: string;
   disabilityType: string;
   birthdate: string;

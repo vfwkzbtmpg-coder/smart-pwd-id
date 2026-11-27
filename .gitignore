@@ -21,6 +21,12 @@ build/
 .dbg/
 
 # ---------------------------------------------------------------
+# DuckDNS updater — holds the DuckDNS token, stays on this PC only
+# ---------------------------------------------------------------
+deploy/duckdns/duckdns.config.json
+deploy/duckdns/last-ip.txt
+
+# ---------------------------------------------------------------
 # Bundled Windows Python runtime for the NFC kiosk.
 # The Raspberry Pi runs its own python3, so this is machine-local
 # and would add ~160 MB of binaries to the repository.

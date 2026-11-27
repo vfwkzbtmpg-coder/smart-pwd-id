@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const tls = require('tls');
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 // Some ISP networks drop Node's TLS 1.3 handshake to supabase.co — the socket
@@ -75,6 +76,52 @@ function formatDate(dateStr) {
   });
 }
 
+/**
+ * A fresh secret for one holder's QR code and NFC tag. 128 bits of randomness:
+ * an ID number alone is guessable, this is not.
+ */
+function newQrToken() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+/**
+ * Whether profiles.qr_token exists yet. Probed once and remembered, because
+ * every verification would otherwise pay for a failing query until migration
+ * 012 is applied. When it is missing we fall back to the old behaviour —
+ * verification by ID number alone — instead of refusing every card in the
+ * field.
+ */
+let qrTokenColumnReady = null;
+async function qrTokenSupported() {
+  if (qrTokenColumnReady !== null) return qrTokenColumnReady;
+  const { error } = await supabase.from('profiles').select('qr_token').limit(1);
+  qrTokenColumnReady = !(error && /qr_token/i.test(error.message || ''));
+  if (!qrTokenColumnReady) {
+    console.warn('[qr] profiles.qr_token is missing — run 012_qr_token.sql to enable rotating QR codes.');
+  }
+  return qrTokenColumnReady;
+}
+
+/**
+ * Detaches a physical tag from a holder. Both columns are cleared because the
+ * kiosk writes nfc_uid (migration 010) while older deployments still carry
+ * nfc_id; clearing only one leaves the card verifying on the other.
+ */
+async function clearNfcBinding(userId) {
+  const both = await supabase
+    .from('profiles')
+    .update({ nfc_uid: null, nfc_id: null })
+    .eq('id', userId);
+  if (!both.error) return true;
+  if (!/nfc_uid/i.test(both.error.message || '')) return false;
+  // Pre-010 database: nfc_uid does not exist, so fall back to the legacy column.
+  const legacy = await supabase
+    .from('profiles')
+    .update({ nfc_id: null })
+    .eq('id', userId);
+  return !legacy.error;
+}
+
 // ----------------------------- API ENDPOINTS -----------------------------
 
 /**
@@ -120,6 +167,22 @@ app.post('/api/verify', async (req, res) => {
     }
 
     const account = profiles && profiles[0];
+
+    // The holder's secret is read in its own query so a database that has not
+    // run migration 012 yet still verifies by ID number, exactly as before.
+    let expectedToken = null;
+    if (await qrTokenSupported()) {
+      let tokenQuery = supabase.from('profiles').select('qr_token');
+      tokenQuery = byUuid ? tokenQuery.eq('id', pwdId) : tokenQuery.eq('id_number', pwdId);
+      const { data: tokenRows, error: tokenErr } = await tokenQuery.limit(1);
+      if (tokenErr) console.warn('[verify] could not read qr_token:', tokenErr.message);
+      expectedToken = (tokenRows && tokenRows[0] && tokenRows[0].qr_token) || null;
+    }
+    const suppliedToken = String((req.body && req.body.token) || '').trim();
+    // A holder that has never been issued a token is not held to one, so cards
+    // printed before migration 012 keep working until their next decision.
+    const staleToken = !!(expectedToken && suppliedToken !== expectedToken);
+
     const expired = !!(account && account.valid_until
       && String(account.valid_until).slice(0, 10) < new Date().toISOString().slice(0, 10));
     const methodDisabled = !!(account && (
@@ -131,7 +194,8 @@ app.post('/api/verify', async (req, res) => {
       account.application_status === 'Approved' &&
       account.role === 'pwd' &&
       !expired &&
-      !methodDisabled;
+      !methodDisabled &&
+      !staleToken;
     const failureReason = isApproved
       ? null
       : !account
@@ -144,6 +208,8 @@ app.post('/api/verify', async (req, res) => {
       ? 'ID expired'
       : methodDisabled
       ? `${methodKey} verification is disabled by the cardholder`
+      : staleToken
+      ? 'Code is out of date'
       : 'ID is not valid';
 
     // Log every verification attempt (success OR failure)
@@ -160,9 +226,11 @@ app.post('/api/verify', async (req, res) => {
     }
 
     if (!isApproved) {
-      return res.status(methodDisabled ? 403 : 404).json({
+      return res.status(methodDisabled || staleToken ? 403 : 404).json({
         ok: false,
-        message: methodDisabled
+        message: staleToken
+          ? 'This code is no longer valid. The PWD ID was reissued after this code was printed — ask the holder for their latest card.'
+          : methodDisabled
           ? `${methodKey} verification is disabled by the cardholder.`
           : expired
           ? 'This PWD ID has expired.'
@@ -543,11 +611,21 @@ app.put('/api/applications/:id', async (req, res) => {
         profilePatch.application_status = 'Not Submitted';
       }
 
+      // Every decision reissues the holder's code. An ID number is guessable and
+      // a printed card can be photocopied, so the QR and the NFC tag are only
+      // ever made to match the card issued by the most recent review.
+      if ((nextStatus === 'Approved' || nextStatus === 'Rejected') && await qrTokenSupported()) {
+        profilePatch.qr_token = newQrToken();
+      }
+
       const { error: profUpErr } = await supabase
         .from('profiles')
         .update(profilePatch)
         .eq('id', userId);
       if (profUpErr) throw new Error('profiles update: ' + profUpErr.message);
+
+      // A rejected holder must not still get through by tapping the old tag.
+      if (nextStatus === 'Rejected') await clearNfcBinding(userId);
     }
 
     // 4. Return enriched application (same flat shape as GET)
@@ -901,12 +979,44 @@ app.delete('/api/pwd/nfc-card', async (req, res) => {
 
     const { data, error } = await supabase
       .from('profiles')
-      .update({ nfc_id: null })
-      .eq('id', caller.uid)
       .select('id')
+      .eq('id', caller.uid)
       .maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, message: 'Your profile could not be found.' });
+
+    const cleared = await clearNfcBinding(caller.uid);
+    if (!cleared) throw new Error('nfc unlink failed');
+
+    res.json({ ok: true, nfcLinked: false, message: 'The lost NFC card has been unlinked.' });
+  } catch (_) {
+    res.status(500).json({ ok: false, message: 'Could not unlink the NFC card. Please try again.' });
+  }
+});
+
+/**
+ * DELETE /api/profiles/:userId/nfc-card
+ *
+ * The same "my card is lost" action, but run by an administrator from the
+ * console. Holders who have lost a card usually cannot reach their own
+ * account to do it themselves, so the counter needs a way to detach the tag
+ * without waiting for the holder to log in.
+ */
+app.delete('/api/profiles/:userId/nfc-card', async (req, res) => {
+  try {
+    const caller = await resolveCaller(req);
+    if (!caller) return res.status(401).json({ ok: false, message: 'Please log in again.' });
+    if (caller.role !== 'admin') {
+      return res.status(403).json({ ok: false, message: 'Only an administrator can unlink a cardholder\u2019s NFC card.' });
+    }
+
+    const userId = String(req.params.userId || '').trim();
+    if (!UUID_RE.test(userId)) {
+      return res.status(400).json({ ok: false, message: 'A valid cardholder id is required.' });
+    }
+
+    const cleared = await clearNfcBinding(userId);
+    if (!cleared) throw new Error('nfc unlink failed');
 
     res.json({ ok: true, nfcLinked: false, message: 'The lost NFC card has been unlinked.' });
   } catch (_) {

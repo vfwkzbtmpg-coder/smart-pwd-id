@@ -315,6 +315,7 @@
 
   <!-- SUPABASE AUTH (same as admin.html) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="src/api-client.js"></script>
   <script src="src/supabaseClient.js"></script>
   <script src="js/auth.js"></script>
 
@@ -972,7 +973,9 @@
           const actionBtn = b.dataset.action === action;
           b.disabled = loading;
           if (actionBtn) {
-            b.dataset.originalHtml = b.dataset.originalHtml || b.innerHTML;
+            b.dataset.originalHtml = b.dataset.originalHtml || (window.SmartPWDLanguage
+              ? window.SmartPWDLanguage.sourceText(b)
+              : b.innerHTML);
             if (loading) {
               b.innerHTML = (action === 'approve' ? 'Approving…' : action === 'reject' ? 'Rejecting…' : '…');
               b.setAttribute('aria-busy', 'true');

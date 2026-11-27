@@ -424,13 +424,19 @@
       }
 
       // PERFORM VERIFICATION (SERVER)
-      async function performVerification(id, method) {
+      // `token` is the holder's secret, read back out of a link, a QR code or
+      // an NFC tag. The server refuses a code whose token no longer matches,
+      // which is what makes a photocopied card fail once the ID is reissued.
+      async function performVerification(id, method, token) {
         showState("loading");
         try {
+          const payload = { pwdId: id, method: method };
+          const secret = String(token || "").trim();
+          if (secret) payload.token = secret;
           const response = await fetch('/api/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pwdId: id, method: method })
+            body: JSON.stringify(payload)
           });
 
           const result = await response.json();
@@ -463,6 +469,17 @@
         }
       }
 
+      // The holder's secret rides in the same link as the ID, under "t".
+      function extractToken(raw) {
+        const text = String(raw || "").trim();
+        if (!text) return "";
+        try {
+          return (new URL(text, window.location.href).searchParams.get("t") || "").trim();
+        } catch (e) {
+          return "";
+        }
+      }
+
       function initializeQrScanner() {
         function onScanSuccess(decodedText, decodedResult) {
           // Stop the scanner and camera.
@@ -472,7 +489,7 @@
             });
             html5QrcodeScanner = null; // Nullify to allow re-initialization if needed
           }
-          performVerification(extractPwdId(decodedText), "QR");
+          performVerification(extractPwdId(decodedText), "QR", extractToken(decodedText));
         }
 
         function onScanFailure(error) {
@@ -492,7 +509,7 @@
           const method = this.dataset.method;
           if (method === "RFID/Manual") { // The QR button was removed, so this only handles Manual/RFID
             if (validateManualId()) {
-              performVerification(manualId.value.trim(), "Manual"); // Log as "Manual" if button is clicked
+              performVerification(manualId.value.trim(), "Manual", extractToken(manualId.value)); // Log as "Manual" if button is clicked
             }
           }
         });
@@ -513,9 +530,10 @@
 
               ndef.addEventListener('reading', ({ message }) => {
                 const textDecoder = new TextDecoder();
-                const pwdId = extractPwdId(textDecoder.decode(message.records[0].data));
+                const rawTag = textDecoder.decode(message.records[0].data);
+                const pwdId = extractPwdId(rawTag);
                 nfcStatus.textContent = `Tag detected. Verifying ID: ${pwdId}`;
-                performVerification(pwdId, 'NFC');
+                performVerification(pwdId, 'NFC', extractToken(rawTag));
               });
 
               ndef.addEventListener('readingerror', () => {
@@ -559,18 +577,21 @@
         if (e.key === "Enter") {
           e.preventDefault(); // Prevent default form submission
           if (validateManualId()) {
-            performVerification(manualId.value.trim(), "RFID"); // Log as "RFID"
+            performVerification(manualId.value.trim(), "RFID", extractToken(manualId.value)); // Log as "RFID"
           }
         }
       });
 
       /*
        * A card's QR code and NFC tag both carry the same link:
-       *   verify.html?id=<PWD ID>
-       * Open that link and verify straight away, without starting the camera —
-       * someone who just tapped a tag on their phone should land on the result,
-       * not on a permission prompt. Without an id we behave as before and open
-       * the QR scanner, since that is the default tab.
+       *   verify.html?id=<PWD ID>&t=<secret>
+       * The secret is what makes the code unforgeable, and it is replaced every
+       * time an admin approves or rejects the application — so a link printed
+       * from an older card stops working. Open the link and verify straight
+       * away, without starting the camera: someone who just tapped a tag on
+       * their phone should land on the result, not on a permission prompt.
+       * Without an id we behave as before and open the QR scanner, since that
+       * is the default tab.
        */
       const linkParams = new URLSearchParams(window.location.search);
       const linkId = (linkParams.get("id") || linkParams.get("pwdId") || "").trim();
@@ -581,7 +602,7 @@
         const manualTab = document.querySelector('[data-tab="manual"]');
         if (manualTab) manualTab.click();
         manualId.value = linkId;
-        performVerification(linkId, linkMethod === "NFC" ? "NFC" : "QR");
+        performVerification(linkId, linkMethod === "NFC" ? "NFC" : "QR", linkParams.get("t"));
       } else if (linkMethod === "NFC") {
         // verifier.html links here with ?method=nfc — open on the NFC tab.
         const nfcTab = document.querySelector('[data-tab="nfc"]');
@@ -596,6 +617,7 @@
 
   <!-- Global JavaScript -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="src/api-client.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/app.js"></script>
 
