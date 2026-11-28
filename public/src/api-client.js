@@ -5,8 +5,8 @@
  * The site used to be served by server/server.js, which held the Supabase
  * service-role key and answered fourteen /api/* endpoints. On a static host
  * there is no server at all, so this file answers those same endpoints in the
- * visitor's browser using the publishable key, backed by the policies added in
- * migration 014_public_static_hosting_anon_access.sql.
+ * visitor's browser using the publishable key and the narrow public-verification
+ * function added in migration 015_public_pwd_verification_rpc.sql.
  *
  * No page was rewritten. Every page still calls fetch('/api/...') exactly as
  * before — this file wraps window.fetch and only takes over requests addressed
@@ -46,11 +46,6 @@
   var DATE_LIKE = /^[0-9]{1,4}[/.-][0-9]{1,2}[/.-][0-9]{2,4}$/;
   var VIDEO_EXT = /\.(mp4|webm|mov|m4v|ogv)$/i;
 
-  var PROFILE_FIELDS = 'id,first_name,last_name,id_number,application_status,role,valid_until,approved_at';
-  var PROFILE_FIELDS_WITH_METHODS = PROFILE_FIELDS + ',qr_enabled,nfc_enabled';
-
-  // Probed once and remembered: a database that has not run migration 012 yet
-  // still verifies by ID number instead of refusing every card in the field.
   var qrTokenColumnReady = null;
 
   var KIOSK_OFFLINE = {
@@ -172,151 +167,33 @@
   }
 
   // -------------------------- POST /api/verify ----------------------------
-  // Verifies a printed card's QR code or NFC tag. Runs as a signed-out visitor,
-  // which is exactly why migration 014 exists.
+  // Public checks use a SECURITY DEFINER RPC so anonymous visitors can verify
+  // an ID without exposing every profile or application row.
   async function verify(body) {
     var user = client();
-    var pwdId = body.pwdId;
+    var pwdId = String(body.pwdId || '').trim();
     var methodKey = String(body.method || 'Manual').trim().toUpperCase();
 
     if (!pwdId) {
       return jsonResponse({ ok: false, message: 'PWD ID is required for verification.' }, 400);
     }
 
-    // Look up by id_number first (e.g. "2026-0000-4821") and fall back to UUID.
-    var byUuid = /^[0-9a-fA-F-]{36}$/.test(String(pwdId));
-
-    async function lookupProfile(includeMethodSettings) {
-      var query = user.from('profiles').select(
-        includeMethodSettings ? PROFILE_FIELDS_WITH_METHODS : PROFILE_FIELDS
-      );
-      query = byUuid ? query.eq('id', pwdId) : query.eq('id_number', pwdId);
-      return query.limit(1);
-    }
-
-    var first = await lookupProfile(true);
-    var profiles = first.data;
-    var error = first.error;
-    // Verification keeps working while migration 011 is pending.
-    if (error && /qr_enabled|nfc_enabled/i.test(error.message || '')) {
-      var second = await lookupProfile(false);
-      profiles = second.data;
-      error = second.error;
-    }
-    if (error) throw new Error('Database error during verification.');
-
-    var account = profiles && profiles[0];
-
-    // The holder's secret is read in its own query so a database without
-    // migration 012 still verifies by ID number, exactly as before.
-    var expectedToken = null;
-    if (await qrTokenSupported()) {
-      var tokenQuery = user.from('profiles').select('qr_token');
-      tokenQuery = byUuid ? tokenQuery.eq('id', pwdId) : tokenQuery.eq('id_number', pwdId);
-      var tokenRows = await tokenQuery.limit(1);
-      expectedToken = (tokenRows.data && tokenRows.data[0] && tokenRows.data[0].qr_token) || null;
-    }
-    var suppliedToken = String(body.token || '').trim();
-    // A holder that has never been issued a token is not held to one, so cards
-    // printed before migration 012 keep working.
-    var staleToken = !!(expectedToken && suppliedToken !== expectedToken);
-
-    var expired = !!(account && account.valid_until
-      && String(account.valid_until).slice(0, 10) < new Date().toISOString().slice(0, 10));
-    var methodDisabled = !!(account && (
-      (methodKey === 'QR' && account.qr_enabled === false)
-      || (methodKey === 'NFC' && account.nfc_enabled === false)
-    ));
-    var isApproved = !!(
-      account
-      && account.application_status === 'Approved'
-      && account.role === 'pwd'
-      && !expired
-      && !methodDisabled
-      && !staleToken
-    );
-    var failureReason = isApproved ? null
-      : !account ? 'ID not found'
-      : account.role !== 'pwd' ? 'Not a PWD account'
-      : account.application_status !== 'Approved' ? 'Application status: ' + account.application_status
-      : expired ? 'ID expired'
-      : methodDisabled ? methodKey + ' verification is disabled by the cardholder'
-      : staleToken ? 'Code is out of date'
-      : 'ID is not valid';
-
-    // Log every verification attempt, success or failure.
-    try {
-      await user.from('verification_transactions').insert({
-        pwd_id: account ? account.id : '00000000-0000-0000-0000-000000000000',
-        verifier_id: body.verifierId || null,
-        method: ['QR', 'NFC', 'RFID', 'MANUAL'].indexOf(methodKey) >= 0
-          ? (methodKey === 'MANUAL' ? 'Manual' : methodKey)
-          : 'Manual',
-        result: isApproved ? 'Success' : 'Failed',
-        failure_reason: failureReason,
-      });
-    } catch (_) {
-      // A verification that cannot be logged is still a verification.
-    }
-
-    if (!isApproved) {
-      return jsonResponse({
-        ok: false,
-        message: staleToken
-          ? 'This code is no longer valid. The PWD ID was reissued after this code was printed — ask the holder for their latest card.'
-          : methodDisabled
-          ? methodKey + ' verification is disabled by the cardholder.'
-          : expired
-          ? 'This PWD ID has expired.'
-          : 'PWD ID not found, is not valid, or has not been approved yet.',
-      }, (methodDisabled || staleToken) ? 403 : 404);
-    }
-
-    // The printed card lives on pwd_applications. profiles only holds the
-    // identity and the issued ID number, so pull the newest application row.
-    var card = null;
-    var cards = await user
-      .from('pwd_applications')
-      .select('photo_url,signature_url,bg_front,birthdate,sex,blood_type,emergency_name,emergency_contact,address,disability_type,reviewed_at,submitted_at')
-      .eq('user_id', account.id)
-      .order('submitted_at', { ascending: false })
-      .limit(1);
-
-    if (!cards.error) {
-      var row = (cards.data && cards.data[0]) || {};
-      // Rows written before migration 005 kept the birthdate inside
-      // disability_type; a date-like value there IS the birthdate.
-      var legacyDisabilityType = String(row.disability_type || '').trim();
-      var legacyBirthdate = DATE_LIKE.test(legacyDisabilityType) ? legacyDisabilityType : '';
-      card = {
-        photoUrl: row.photo_url || '',
-        signatureUrl: row.signature_url || '',
-        bgFront: String(row.bg_front || '').toLowerCase(),
-        birthdate: String(row.birthdate || '').trim() || legacyBirthdate,
-        sex: row.sex || '',
-        bloodType: row.blood_type || '',
-        disabilityType: legacyBirthdate ? '' : legacyDisabilityType,
-        emergencyName: row.emergency_name || '',
-        emergencyContact: row.emergency_contact || '',
-        address: row.address || '',
-        dateIssued: row.reviewed_at || row.submitted_at || null,
-      };
-    }
-
-    return jsonResponse({
-      ok: true,
-      message: 'PWD ID is valid.',
-      method: methodKey === 'MANUAL' ? 'Manual' : methodKey,
-      account: {
-        id: account.id,
-        idNumber: account.id_number,
-        firstName: account.first_name || '—',
-        lastName: account.last_name || '—',
-        validUntil: formatDate(account.valid_until),
-        approvedAt: formatDate(account.approved_at),
-      },
-      card: card,
+    var result = await user.rpc('verify_public_pwd_id', {
+      p_pwd_id: pwdId,
+      p_method: methodKey,
+      p_token: String(body.token || '').trim() || null,
     });
+    if (result.error) {
+      throw new Error(
+        'Public verification setup is incomplete. The site administrator must apply Supabase migration 015.'
+      );
+    }
+
+    var payload = result.data;
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('The verification service returned an invalid response.');
+    }
+    return jsonResponse(payload, payload.ok ? 200 : 404);
   }
 
   // ---------------------- GET /api/profiles/stats -------------------------
