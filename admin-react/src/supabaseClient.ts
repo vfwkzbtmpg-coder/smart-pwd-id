@@ -17,6 +17,23 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(SUPABAS
   },
 });
 
+declare global {
+  interface Window {
+    supabase?: SupabaseClient<Database>;
+  }
+}
+
+/**
+ * A production build has no server/server.js, so main.tsx loads
+ * src/lib/api-client.js to answer /api/* in the browser. That shim takes the
+ * client from window.supabase — the same global the static portal's pages
+ * install — and throws "The Supabase client is not available on this page."
+ * when it finds nothing there. The module import above is invisible to it, so
+ * the instance is published here; every shimmed request (approve, reject,
+ * review notes, messages, NFC card) needs it.
+ */
+window.supabase = supabase;
+
 export function assertEnv() {
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     return false;
