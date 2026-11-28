@@ -37,7 +37,7 @@
     <div class="heading reveal">
       <span class="eyebrow">THIRD-PARTY VERIFICATION</span>
       <h1>Verify a PWD ID</h1>
-      <p>Use QR, NFC, or manual ID lookup. This academic prototype simulates the verification response.</p>
+      <p>Check whether a Smart PWD ID is active. No account or login is required. Scan the card QR code for full card details, or enter the ID number for a validity check.</p>
     </div>
 
     <!-- VERIFICATION GRID -->
@@ -385,7 +385,9 @@
                                     <span class="vpill">Checked <b>${esc(new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }))}</b></span>
                                 </div>
                             </div>
-                            <div id="verifyCard">${cardMarkup(data.account, data.card)}</div>
+                            <div id="verifyCard">${data.card
+                              ? cardMarkup(data.account, data.card)
+                              : '<p class="vsub">ID and approval confirmed. Scan the QR code on the card to view its printed details.</p>'}</div>
                         </div>
                     `;
                 }
