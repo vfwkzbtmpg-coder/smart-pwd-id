@@ -2110,6 +2110,13 @@ body.dark-mode .scanner {
   100% { transform: scale(1.2); opacity: 0; }
 }
 
+/* The QR and manual panes, offered under the NFC button on every device. */
+.nfc-fallback {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 /* Result panel styles */
 .result-state {
   text-align: center;
@@ -4158,12 +4165,153 @@ body.high-contrast .toast-close {
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 560px), (pointer: coarse) {
   /* Home and Verify are the two links a phone user needs. The two
      index anchors stay reachable from the home page itself. */
   .nav-links > a:nth-of-type(2),
   .nav-links > a:nth-of-type(3) {
     display: none;
+  }
+}
+
+/* Keep the landing page at the device width instead of triggering
+   Safari's automatic zoom-out to fit the desktop grids. */
+@media (max-width: 720px), (pointer: coarse) {
+  .landing-page {
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  .landing-page main,
+  .landing-page .hero,
+  .landing-page .section,
+  .landing-page .mobile-section,
+  .landing-page footer {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .landing-page .hero {
+    min-height: 0;
+    padding: 48px 6% 42px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    text-align: center;
+  }
+
+  .landing-page .hero-copy,
+  .landing-page .hero-visual {
+    min-width: 0;
+  }
+
+  .landing-page .hero h1 {
+    font-size: clamp(42px, 12vw, 60px);
+  }
+
+  .landing-page .hero-visual {
+    min-height: 0;
+  }
+
+  .landing-page .hero-visual img {
+    display: block;
+    width: min(100%, 430px);
+    height: auto;
+    margin-inline: auto;
+  }
+
+  .landing-page .actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .landing-page .trust {
+    line-height: 1.8;
+  }
+
+  .landing-page .section {
+    padding: 56px 6%;
+  }
+
+  .landing-page .feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .landing-page .feature {
+    min-width: 0;
+    padding: 18px;
+  }
+
+  .landing-page .benefit-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .landing-page .benefit-grid article {
+    min-width: 0;
+    padding: 20px;
+  }
+
+  .landing-page .mobile-section {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+    padding: 56px 6%;
+  }
+
+  .landing-page .mobile-copy {
+    min-width: 0;
+  }
+
+  .landing-page .mobile-copy h2 {
+    font-size: clamp(30px, 8vw, 38px);
+  }
+
+  .landing-page .phones {
+    width: 100%;
+    min-width: 0;
+    height: clamp(390px, 110vw, 480px);
+    overflow: hidden;
+  }
+
+  .landing-page .phone {
+    width: min(62vw, 245px);
+    height: auto;
+    aspect-ratio: 1 / 2;
+  }
+
+  .landing-page .phone.back {
+    transform: translateX(24%) rotate(8deg);
+  }
+
+  .landing-page footer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 18px;
+    padding: 36px 6%;
+  }
+
+  .landing-page footer > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .landing-page footer > div:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 420px), (pointer: coarse) {
+  .landing-page .feature-grid,
+  .landing-page footer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-page footer > div:first-child {
+    grid-column: auto;
+  }
+
+  .landing-page .store-row {
+    flex-wrap: wrap;
   }
 }
 

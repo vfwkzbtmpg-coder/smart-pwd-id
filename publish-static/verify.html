@@ -109,6 +109,23 @@
             <span aria-hidden="true">◉</span>
             Start NFC Scan
           </button>
+
+          <!-- A page can only read a tag in Chrome on Android, because that is
+               the browser that implements Web NFC. iPhone hands the tag to the
+               operating system instead, so those visitors are given the two
+               methods that work on any phone: the QR camera and the keyboard. -->
+          <div class="nfc-fallback">
+            <button
+              type="button"
+              class="btn light full"
+              id="nfcUseQrButton"
+            >Scan QR Code Instead</button>
+            <button
+              type="button"
+              class="btn light full"
+              id="nfcUseManualButton"
+            >Enter ID Manually</button>
+          </div>
         </div>
 
         <!-- MANUAL TAB -->
@@ -518,11 +535,24 @@
       });
 
       // Handle NFC Verification
+      /*
+       * Web NFC is implemented by Chrome on Android alone: Safari and every other
+       * iOS browser, Firefox and the desktop browsers cannot read a tag from a
+       * page at all. Instead of leaving those visitors at a dead end, the pane
+       * names what their device does support — iPhone reads the tag in the
+       * operating system and opens the verification link by itself — and both
+       * device-independent methods stay one tap away.
+       */
       function initializeNFC() {
         const nfcStatus = document.getElementById("nfcStatus");
         const nfcHeading = document.getElementById("nfcHeading");
 
-        if ('NDEFReader' in window) {
+        // iPadOS reports itself as a Mac, so the touch points give it away.
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+          || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+        // Reading a tag through the API needs a secure origin, like any sensor.
+        if (window.isSecureContext && 'NDEFReader' in window) {
           nfcVerifyButton.addEventListener('click', async () => {
             showState('loading');
             nfcStatus.textContent = 'Ready to scan. Tap an NFC tag near your device.';
@@ -548,10 +578,30 @@
             }
           });
         } else {
-          nfcHeading.textContent = 'NFC Not Supported';
-          nfcStatus.textContent = 'Your browser or device does not support Web NFC. Please use Chrome on an NFC-enabled Android device.';
+          nfcHeading.textContent = isIOS
+            ? "Use your iPhone's built-in NFC reader"
+            : 'NFC Not Supported';
+          nfcStatus.textContent = isIOS
+            ? "iPhone reads the card without an app: hold the top of your iPhone against the card, then tap the notification that appears. Verification opens automatically."
+            : 'This browser cannot read NFC tags. Open this page in Chrome on Android, or use the QR code below.';
           nfcVerifyButton.disabled = true;
           nfcVerifyButton.textContent = 'NFC Not Available';
+        }
+
+        // Both of these work on any device, so they are always offered.
+        const qrFallback = document.getElementById("nfcUseQrButton");
+        if (qrFallback) {
+          qrFallback.addEventListener("click", function () {
+            const qrTab = document.querySelector('[data-tab="qr"]');
+            if (qrTab) qrTab.click();
+          });
+        }
+        const manualFallback = document.getElementById("nfcUseManualButton");
+        if (manualFallback) {
+          manualFallback.addEventListener("click", function () {
+            const manualTab = document.querySelector('[data-tab="manual"]');
+            if (manualTab) manualTab.click();
+          });
         }
       }
       initializeNFC();
